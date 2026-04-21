@@ -75,6 +75,13 @@ python main.py
  ┣ 📜 requirements.txt     # Dependency definitions
  ┗ 📜 README.md
 ```
+## 🔒 Limitations & Notes
+* This system is explicitly designed for local gateway monitoring and relies heavily on OS-level `arp` execution. Modifying this for Unix systems will require updating the regex logic in the network scanner layer.
+* IP Addresses are assigned via DHCP; the system strictly tracks identities using the unalterable **MAC Address**.
+
+---
+*Architected and developed with focus on clean layouts, scalable performance, and pure utility.*
+
 ## ⚖️ License
 
 This project is licensed under the **MIT License**. 
@@ -87,10 +94,3 @@ This project is licensed under the **MIT License**.
 * **⚠️ Attribution**: You must include the original copyright notice and license in any copy of the software or substantial portion of it.
 
 See the [LICENSE](LICENSE) file for the full text.
-
-## 🔒 Limitations & Notes
-* This system is explicitly designed for local gateway monitoring and relies heavily on OS-level `arp` execution. Modifying this for Unix systems will require updating the regex logic in the network scanner layer.
-* IP Addresses are assigned via DHCP; the system strictly tracks identities using the unalterable **MAC Address**.
-
----
-*Architected and developed with focus on clean layouts, scalable performance, and pure utility.*
