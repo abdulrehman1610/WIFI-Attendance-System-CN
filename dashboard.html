@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Dashboard - WIFI Attendance</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234e44d4'/><text x='50' y='50' font-size='60' dominant-baseline='central' text-anchor='middle'>📡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-main: #f5f7f9;
+    --bg-card: #ffffff;
+    --bg-hover: #eef1f3;
+    
+    --primary: #4e44d4;
+    --primary-container: #9895ff;
+    
+    --text-title: #2c2f31;
+    --text-body: #4a4d50;
+    --text-muted: #8b8e91;
+    
+    --border-ghost: rgba(171, 173, 175, 0.15); /* outline-variant at 15% */
+    
+    --present-bg: #e6f4ea;
+    --present-tx: #137333;
+    --absent-bg: #fce8e6;
+    --absent-tx: #c5221f;
+
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    
+    --shadow-float: 0 12px 32px rgba(44, 47, 49, 0.06);
+    
+    --font-sans: 'Inter', sans-serif;
+    --font-disp: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-body);
+    font-family: var(--font-sans);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    display: flex;
+    min-height: 100vh;
+  }
+
+  /* --- SIDEBAR --- */
+  .sidebar {
+    width: 260px;
+    background-color: var(--bg-main);
+    display: flex; flex-direction: column;
+    padding: 32px 24px;
+    position: fixed; top: 0; bottom: 0; left: 0;
+  }
+  .brand {
+    font-family: var(--font-disp);
+    font-size: 1.25rem; font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 48px;
+    display: flex; align-items: center; gap: 12px;
+    line-height: 1; white-space: nowrap;
+  }
+  
+  .nav-menu { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 16px;
+    padding: 14px 20px; border-radius: var(--radius-sm);
+    font-weight: 600; font-size: 0.9rem;
+    color: var(--text-muted); text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .nav-item.active { background: var(--bg-card); color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+  .nav-item:hover:not(.active) { background: var(--bg-hover); color: var(--text-title); }
+
+  .nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+
+  /* --- MAIN CONTENT --- */
+  .main-content {
+    flex: 1;
+    margin-left: 260px;
+    padding: 32px 48px 60px;
+    max-width: 1200px;
+  }
+
+  /* Top Nav / Status Bar */
+  .top-bar {
+    display: flex; justify-content: flex-end; align-items: center; gap: 16px;
+    margin-bottom: 40px;
+  }
+  .status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
+  .status-pill.c-present { background: var(--present-bg); color: var(--present-tx); }
+  .status-pill.c-present .dot { background: var(--present-tx); }
+  .status-pill.c-absent { background: var(--absent-bg); color: var(--absent-tx); }
+  .status-pill.c-absent .dot { background: var(--absent-tx); }
+  .status-pill.c-partial { background: #fff0d4; color: #b27b16; }
+  .status-pill.c-partial .dot { background: #b27b16; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+  
+  .gateway-pill {
+    background: var(--border-ghost); padding: 6px 14px; border-radius: 99px;
+    font-size: 0.75rem; font-weight: 600; color: var(--text-muted);
+  }
+
+  /* Page Header */
+  .page-header { margin-bottom: 40px; }
+  .page-header h1 {
+    font-family: var(--font-disp);
+    font-size: 2.5rem; font-weight: 800; letter-spacing: -1px;
+    color: var(--text-title); margin-bottom: 8px;
+  }
+  .page-header p { font-size: 1rem; color: var(--text-muted); }
+
+  /* Stats Grid */
+  .stats-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    margin-bottom: 48px;
+  }
+  .stat-card {
+    background: var(--bg-card); border-radius: var(--radius-md);
+    padding: 32px; box-shadow: var(--shadow-float);
+    position: relative; overflow: hidden;
+  }
+  /* Decorative soft gradient blob inside stat cards */
+  .stat-card::before {
+    content:''; position:absolute; top:-50%; right:-20%; width:150px; height:150px;
+    border-radius:50%; filter:blur(40px); z-index:0; opacity:0.1;
+  }
+  .stat-card.c-present::before { background: var(--present-tx); }
+  .stat-card.c-absent::before { background: var(--absent-tx); }
+  .stat-card.c-total::before { background: var(--primary); }
+
+  .stat-icon { position:relative; z-index:1; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:24px; }
+  .c-present .stat-icon { background: var(--present-bg); color: var(--present-tx); font-size:1.1rem; }
+  .c-absent .stat-icon { background: var(--absent-bg); color: var(--absent-tx); font-size:1rem; }
+  .c-total .stat-icon { background: #e8e6ff; color: var(--primary); font-size:1.1rem; }
+
+  .stat-badge { position:absolute; top:32px; right:32px; font-size:0.7rem; font-weight:700; text-transform:uppercase; letter-spacing:1px; z-index:1; }
+  .c-present .stat-badge { color: var(--present-tx); }
+  .c-absent .stat-badge { color: var(--absent-tx); }
+
+  .stat-value { position:relative; z-index:1; font-family: var(--font-disp); font-size: 3.5rem; font-weight: 800; line-height: 1; color: var(--text-title); letter-spacing:-2px; margin-bottom: 8px;}
+  .stat-label { position:relative; z-index:1; font-size: 0.9rem; font-weight: 500; color: var(--text-muted); }
+
+  /* Roster Table Section */
+  .table-section {
+    background: var(--bg-card); border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-float);
+    padding: 32px;
+  }
+  .table-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 24px;
+  }
+  .table-title-wrap { display: flex; align-items: center; gap: 16px; }
+  .table-title-wrap h2 { font-family: var(--font-disp); font-size: 1.5rem; font-weight: 700; color: var(--text-title); }
+  
+  .live-pill {
+    background: var(--bg-hover); color: var(--text-muted);
+    padding: 4px 10px; border-radius: 99px; font-size: 0.7rem; font-weight: 600;
+  }
+
+  .scan-overlay {
+    text-align: center; padding: 60px 20px; font-size: 0.9rem; color: var(--text-muted); display: none;
+  }
+
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  th {
+    padding: 16px 8px; font-size: 0.75rem; font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;
+    border-bottom: 1px solid var(--border-ghost);
+  }
+  td { padding: 20px 8px; border-bottom: 1px solid var(--border-ghost); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+
+  .col-num { font-size: 0.85rem; color: var(--text-muted); width: 60px; }
+  .student-name { font-weight: 600; color: var(--text-title); font-size: 1rem; margin-bottom: 4px; display:block; }
+  .last-seen { font-size: 0.7rem; font-weight: 600; color: var(--present-tx); text-transform:uppercase; letter-spacing:0.5px;}
+
+  .mac-pill {
+    display: inline-block; background: var(--bg-hover); padding: 6px 12px;
+    border-radius: 99px; font-family: ui-monospace, monospace; font-size: 0.75rem; color: var(--text-muted);
+  }
+  .ip-text { font-family: ui-monospace, monospace; font-size: 0.85rem; color: var(--text-body); }
+
+  .view-all-link {
+    display: block; text-align: center; margin-top: 24px;
+    color: var(--primary); font-weight: 600; font-size: 0.9rem; text-decoration: none;
+  }
+  .view-all-link:hover { text-decoration: underline; }
+
+  .footer-meta {
+    margin-top: 48px; border-top: 1px solid var(--border-ghost); padding-top: 24px;
+    display: flex; gap: 32px; font-size: 0.8rem; color: var(--text-muted); font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div style="width:28px; height:28px; background:var(--primary); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; flex-shrink:0;">📡</div>
+    WiFi Attendance
+  </div>
+  <nav class="nav-menu">
+    <a href="/" class="nav-item active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      Dashboard
+    </a>
+    <a href="/admin" class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Admin Settings
+    </a>
+  </nav>
+  <div class="nav-bottom">
+    <a href="#" class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Support</a>
+    <a href="#" class="nav-item" style="color:var(--absent-tx);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Logout</a>
+  </div>
+</aside>
+
+<main class="main-content">
+  <div class="top-bar">
+    <div class="status-pill c-present" id="status-chip">
+      <div class="dot"></div> <span id="status-text">LIVE</span>
+    </div>
+    <div class="gateway-pill" id="hotspot-ip">192.168.1.1</div>
+  </div>
+
+  <div class="page-header">
+    <h1>Hello, Admin</h1>
+    <p>Monitoring active presence on local network.</p>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card c-present">
+      <div class="stat-icon">✔</div>
+      <div class="stat-badge">Active Now</div>
+      <div class="stat-value" id="s-present">00</div>
+      <div class="stat-label">Students Present</div>
+    </div>
+    <div class="stat-card c-absent">
+      <div class="stat-icon">✖</div>
+      <div class="stat-badge">Missing</div>
+      <div class="stat-value" id="s-absent">00</div>
+      <div class="stat-label">Students Absent</div>
+    </div>
+    <div class="stat-card c-total">
+      <div class="stat-icon">👥</div>
+      <div class="stat-value" id="s-total">00</div>
+      <div class="stat-label">Total Registered</div>
+    </div>
+  </div>
+
+  <div class="table-section">
+    <div class="table-header">
+      <div class="table-title-wrap">
+        <h2>Student Roster</h2>
+        <span class="live-pill" id="countdown">Live View</span>
+      </div>
+    </div>
+
+    <div class="scan-overlay" id="scanning-msg">
+      Syncing hardware layer records...
+    </div>
+
+    <table id="roster" style="display:none;">
+      <thead>
+        <tr>
+          <th class="col-num">#</th>
+          <th>STUDENT DETAILS</th>
+          <th>MAC ADDRESS</th>
+          <th>IP ADDRESS</th>
+          <th>ATTENDANCE</th>
+        </tr>
+      </thead>
+      <tbody id="r-body"></tbody>
+    </table>
+    
+    <a href="/admin" class="view-all-link">View All Registered Students</a>
+  </div>
+
+  <div class="footer-meta">
+    <div>↻ Dashboard polls every 5s</div>
+    <div>◉ Scanner cycles every 20s</div>
+  </div>
+</main>
+
+<script>
+  let timerVal = 20, timer = null;
+  
+  function updateCount(sec) {
+    if(timer) clearInterval(timer);
+    timerVal = sec;
+    document.getElementById('countdown').textContent = `Live View (sync in ${timerVal}s)`;
+    timer = setInterval(() => {
+      timerVal = Math.max(0, timerVal - 1);
+      document.getElementById('countdown').textContent = timerVal > 0 ? `Live View (sync in ${timerVal}s)` : 'Syncing...';
+    }, 1000);
+  }
+
+  function formatCount(v) { return v.toString().padStart(2, '0'); }
+
+  function renderData(data) {
+    if(data.status === 'scanning') {
+      document.getElementById('scanning-msg').style.display = 'block';
+      document.getElementById('status-text').textContent = 'SCANNING';
+      return;
+    }
+    
+    document.getElementById('scanning-msg').style.display = 'none';
+    document.getElementById('roster').style.display = 'table';
+    document.getElementById('status-text').textContent = 'LIVE';
+    
+    document.getElementById('s-present').textContent = formatCount(data.present || 0);
+    document.getElementById('s-absent').textContent = formatCount(data.absent || 0);
+    document.getElementById('s-total').textContent = formatCount(data.total || 0);
+    if(data.hotspot_ip) document.getElementById('hotspot-ip').textContent = data.hotspot_ip;
+    
+    const tbody = document.getElementById('r-body');
+    tbody.innerHTML = '';
+    (data.students || []).forEach((s, idx) => {
+      const tr = document.createElement('tr');
+      // "Last seen" logic
+      let seenLabel = 'LAST SEEN: ';
+      let seenColor = 'var(--text-muted)';
+      
+      let bClass = 'c-absent', bText = 'Absent';
+      
+      if(s.status === 'present') { 
+          seenLabel = 'LAST SEEN: NOW'; seenColor = 'var(--present-tx)'; 
+          bClass = 'c-present'; bText = 'Present';
+      }
+      else if(s.status === 'partial') { 
+          seenLabel = 'LAST SEEN: RECENTLY'; seenColor = '#bf535a'; 
+          bClass = 'c-partial'; bText = 'Partial';
+      }
+      else { 
+          seenLabel = 'LAST SEEN: ABSENT'; 
+      }
+
+      tr.innerHTML = `
+        <td class="col-num">${formatCount(idx + 1)}</td>
+        <td>
+          <span class="student-name">${s.name}</span>
+          <span class="last-seen" style="color:${seenColor}">${seenLabel}</span>
+        </td>
+        <td><span class="mac-pill">${s.mac.toUpperCase()}</span></td>
+        <td><span class="ip-text">${s.ip || '—'}</span></td>
+        <td><div class="status-pill ${bClass}"><div class="dot"></div>${bText}</div></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    updateCount(data.next_scan_in || 20);
+  }
+
+  async function poll() {
+    try {
+      const resp = await fetch('/attendance');
+      if(!resp.ok) throw new Error();
+      renderData(await resp.json());
+    } catch {
+      document.getElementById('status-text').textContent = 'OFFLINE';
+      document.getElementById('status-chip').style.background = '#fce8e6';
+      document.getElementById('status-chip').style.color = '#c5221f';
+      document.querySelector('.status-dot').style.background = '#c5221f';
+    }
+  }
+
+  poll(); setInterval(poll, 5000);
+</script>
+</body>
+</html>

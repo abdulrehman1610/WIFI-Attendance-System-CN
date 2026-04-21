@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Admin - WIFI Attendance</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%234e44d4'/><text x='50' y='50' font-size='60' dominant-baseline='central' text-anchor='middle'>📡</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-main: #f5f7f9;
+    --bg-card: #ffffff;
+    --bg-hover: #eef1f3;
+    
+    --primary: #4e44d4;
+    --primary-container: #9895ff;
+    
+    --text-title: #2c2f31;
+    --text-body: #4a4d50;
+    --text-muted: #8b8e91;
+    
+    --border-ghost: rgba(171, 173, 175, 0.15);
+    
+    --present-bg: #e6f4ea;
+    --present-tx: #137333;
+    --absent-bg: #fce8e6;
+    --absent-tx: #c5221f;
+
+    --radius-sm: 8px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    
+    --shadow-float: 0 12px 32px rgba(44, 47, 49, 0.06);
+    
+    --font-sans: 'Inter', sans-serif;
+    --font-disp: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg-main); color: var(--text-body);
+    font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased;
+    display: flex; min-height: 100vh;
+  }
+
+  /* --- SIDEBAR --- */
+  .sidebar { width: 260px; background-color: var(--bg-main); display: flex; flex-direction: column; padding: 32px 24px; position: fixed; top: 0; bottom: 0; left: 0; }
+  .brand { font-family: var(--font-disp); font-size: 1.2rem; font-weight: 800; color: var(--primary); margin-bottom: 48px; display: flex; align-items: center; gap: 12px; line-height: 1; white-space: nowrap; }
+  
+  .nav-menu { display: flex; flex-direction: column; gap: 8px; flex: 1; }
+  .nav-item {
+    display: flex; align-items: center; gap: 16px; padding: 14px 20px; border-radius: var(--radius-sm);
+    font-weight: 600; font-size: 0.9rem; color: var(--text-muted); text-decoration: none; transition: all 0.2s ease;
+  }
+  .nav-item.active { background: var(--bg-card); color: var(--primary); box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+  .nav-item:hover:not(.active) { background: var(--bg-hover); color: var(--text-title); }
+  .nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 8px; }
+
+  /* --- MAIN CONTENT --- */
+  .main-content { flex: 1; margin-left: 260px; padding: 32px 48px 60px; max-width: 1200px; }
+
+  /* Header */
+  .top-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 40px; }
+  .header-left h1 { font-family: var(--font-disp); font-size: 2.5rem; font-weight: 800; letter-spacing: -1px; color: var(--text-title); margin-bottom: 4px; }
+  .header-left p { color: var(--text-muted); font-size: 0.95rem; }
+  
+  .header-actions { display: flex; align-items: center; gap: 16px; }
+  .gateway-pill { background: var(--bg-hover); padding: 8px 16px; border-radius: var(--radius-sm); font-size: 0.85rem; font-weight: 600; color: var(--text-muted); display: flex; gap: 8px; align-items: center;}
+  
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; font-size: 0.9rem; font-weight: 600; border-radius: var(--radius-sm); border: none; cursor: pointer; text-decoration: none; transition: all 0.2s ease; }
+  .btn-outline { background: var(--bg-hover); color: var(--primary); }
+  .btn-outline:hover { background: #e0e4e8; }
+  
+  .btn-primary { background: linear-gradient(135deg, var(--primary), var(--primary-container)); color: #fff; }
+  .btn-primary:active { transform: scale(0.98); }
+
+  .btn-small { padding: 8px 16px; font-size: 0.8rem; border-radius: 6px; }
+  
+  .card { background: var(--bg-card); border-radius: var(--radius-lg); padding: 36px; box-shadow: var(--shadow-float); margin-bottom: 32px; }
+  
+  .card-header { display: flex; gap: 16px; align-items: flex-start; margin-bottom: 32px; }
+  .card-icon { width: 44px; height: 44px; background: #eeecfb; color: var(--primary); display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); font-size: 1.2rem; }
+  .card-header h2 { font-family: var(--font-disp); font-size: 1.4rem; font-weight: 700; color: var(--text-title); margin-bottom: 4px;}
+  .card-header p { color: var(--text-muted); font-size: 0.9rem; }
+
+  /* Input form */
+  .grid-form { display: grid; grid-template-columns: 1.5fr 1.5fr auto; gap: 24px; align-items: end; }
+  label { display: block; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--text-muted); margin-bottom: 10px; }
+  input, select {
+    width: 100%; background: #eef1f3; border: 1.5px solid transparent; border-radius: var(--radius-sm);
+    padding: 14px 16px; font-family: var(--font-sans); font-size: 0.95rem; color: var(--text-title);
+    transition: all 0.2s;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--primary); background: #ffffff; box-shadow: 0 4px 16px rgba(78, 68, 212, 0.08); }
+
+  /* Table */
+  table { width: 100%; border-collapse: collapse; text-align: left; }
+  th { padding: 16px 8px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; border-bottom: 1px solid var(--border-ghost); }
+  td { padding: 20px 8px; border-bottom: 1px solid var(--border-ghost); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  
+  .student-combo { display: flex; align-items: center; gap: 16px; }
+  .avatar { width: 40px; height: 40px; border-radius: 50%; background: var(--bg-hover); display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--text-muted); font-size: 0.9rem; }
+  .name-text { font-weight: 600; color: var(--text-title); font-size: 1rem; }
+  
+  .mac-text { font-family: ui-monospace, monospace; font-size: 0.85rem; color: var(--text-body); letter-spacing: 1px; }
+
+  /* Status Pills */
+  .status-pill { display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 99px; font-size: 0.75rem; font-weight: 700; }
+  .status-pill.c-present { background: var(--present-bg); color: var(--present-tx); }
+  .status-pill.c-present .dot { background: var(--present-tx); }
+  .status-pill.c-absent { background: var(--absent-bg); color: var(--absent-tx); }
+  .status-pill.c-absent .dot { background: var(--absent-tx); }
+  .status-pill.c-partial { background: #fff0d4; color: #b27b16; }
+  .status-pill.c-partial .dot { background: #b27b16; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; }
+
+  .actions-flex { display: flex; gap: 8px; align-items: center; }
+  .btn-ghost { background: transparent; border: none; color: var(--text-muted); padding: 8px; cursor: pointer; border-radius: 6px;}
+  .btn-ghost:hover { background: var(--bg-hover); color: var(--absent-tx); }
+</style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="brand">
+    <div style="width:28px; height:28px; background:var(--primary); border-radius:6px; display:flex; align-items:center; justify-content:center; color:#fff; font-size:14px; flex-shrink:0;">📡</div>
+    WiFi Attendance
+  </div>
+  <nav class="nav-menu">
+    <a href="/" class="nav-item">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      Dashboard
+    </a>
+    <a href="/admin" class="nav-item active">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+      Admin Settings
+    </a>
+  </nav>
+  <div class="nav-bottom">
+    <a href="#" class="nav-item"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg> Support</a>
+    <a href="#" class="nav-item" style="color:var(--absent-tx);"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg> Logout</a>
+  </div>
+</aside>
+
+<main class="main-content">
+  <div class="top-header">
+    <div class="header-left">
+      <h1>Admin Settings</h1>
+      <p>Configure network parameters and manage the student registry.</p>
+    </div>
+    <div class="header-actions">
+      <div class="gateway-pill">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+        Gateway: 192.168.137.1
+      </div>
+      <a href="/" class="btn btn-outline">
+        &larr; Return to Dashboard
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">👤</div>
+      <div>
+        <h2>Add New Student</h2>
+        <p>Register a new device MAC address to automatically assign network attendance.</p>
+      </div>
+    </div>
+    <div class="grid-form">
+      <div>
+        <label>Full Name</label>
+        <input type="text" id="add-name" placeholder="e.g. Julian Montgomery">
+      </div>
+      <div>
+        <label>MAC Address</label>
+        <input type="text" id="add-mac" placeholder="00:1A:2B:3C:4D:5E">
+      </div>
+      <button class="btn btn-primary" style="padding: 14px 24px;" onclick="addStudent()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+        Register Student
+      </button>
+    </div>
+  </div>
+
+  <!-- Unknown Devices Card -->
+  <div class="card" id="unknown-card" style="display:none; border-left: 3px solid #b27b16;">
+    <div class="card-header" style="margin-bottom: 20px;">
+      <div class="card-icon" style="background:#fff0d4; color:#b27b16;">⚠️</div>
+      <div>
+        <h2>Unknown Devices</h2>
+        <p>Active connections missing from registry.</p>
+      </div>
+    </div>
+    <table style="margin-top:-10px;">
+      <thead>
+        <tr>
+          <th>IP Lease</th>
+          <th>MAC Address</th>
+          <th>Hostname</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody id="admin-unknown-body"></tbody>
+    </table>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon" style="background:transparent; padding:0; width:auto; border-radius:0;"></div>
+      <div>
+        <h2>Student Registry</h2>
+        <p id="total-reg-count">Students currently registered in the system.</p>
+      </div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Student Name</th>
+          <th>MAC Address</th>
+          <th>System Status</th>
+          <th>Status Override</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="admin-table"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<script>
+  function getInitials(name) {
+    if(!name) return '?';
+    const pts = name.split(' ');
+    if(pts.length > 1) return pts[0][0] + pts[1][0];
+    return pts[0][0];
+  }
+
+  async function fetchStudents() {
+    try {
+      const res = await fetch('/attendance');
+      const data = await res.json();
+      if(data.students) {
+        document.getElementById('total-reg-count').textContent = `${data.total || data.students.length} Students currently registered in the system.`;
+        renderTable(data.students);
+      }
+      if(data.unknown) renderUnknown(data.unknown);
+    } catch(e) {}
+  }
+
+  function renderTable(students) {
+    const tbody = document.getElementById('admin-table');
+    tbody.innerHTML = '';
+    students.forEach(s => {
+      let bClass = 'c-absent', bText = 'Absent';
+      if(s.status === 'present') { bClass = 'c-present'; bText = 'Present'; }
+      if(s.status === 'partial') { bClass = 'c-partial'; bText = 'Partial'; }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>
+          <div class="student-combo">
+            <div class="avatar">${getInitials(s.name)}</div>
+            <span class="name-text">${s.name}</span>
+          </div>
+        </td>
+        <td><span class="mac-text">${s.mac.toUpperCase()}</span></td>
+        <td>
+          <div class="status-pill ${bClass}"><div class="dot"></div>${bText}</div>
+        </td>
+        <td>
+          <div class="actions-flex">
+            <select id="sel-${s.mac}" style="width: auto; padding: 10px 14px;">
+              <option value="">Default Tracking</option>
+              <option value="Present">Force Present</option>
+              <option value="Partial">Force Partial</option>
+              <option value="Absent">Force Absent</option>
+            </select>
+            <button class="btn btn-primary btn-small" onclick="override('${s.mac}')">Set</button>
+          </div>
+        </td>
+        <td>
+          <div class="actions-flex">
+             <button class="btn-ghost" onclick="editMac('${s.mac}', '${s.name}')" title="Edit MAC">✎</button>
+             <button class="btn-ghost" onclick="delStudent('${s.mac}')" title="Delete Student">✖</button>
+          </div>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function renderUnknown(unknown) {
+    const card = document.getElementById('unknown-card');
+    const tbody = document.getElementById('admin-unknown-body');
+    if(!unknown || unknown.length === 0) { card.style.display = 'none'; return; }
+    
+    card.style.display = 'block';
+    tbody.innerHTML = '';
+    unknown.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mac-text">${u.ip}</td>
+        <td class="mac-text" style="color: #b27b16;">${u.mac.toUpperCase()}</td>
+        <td class="mac-text">${u.hostname}</td>
+        <td><button class="btn btn-outline btn-small" onclick="fastAdd('${u.mac}')">Quick Enroll</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  async function fastAdd(mac) {
+    const name = prompt(`Enter student name to register MAC ${mac}:`);
+    if(name) {
+      document.getElementById('add-name').value = name;
+      document.getElementById('add-mac').value = mac;
+      await addStudent();
+    }
+  }
+
+  async function addStudent() {
+    const name = document.getElementById('add-name').value;
+    const mac = document.getElementById('add-mac').value;
+    if(!name || !mac) return alert("Fill fields");
+    
+    await fetch('/api/students', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, mac}) });
+    document.getElementById('add-name').value = ''; document.getElementById('add-mac').value = '';
+    fetchStudents();
+  }
+
+  async function editMac(oldMac, name) {
+    const newMac = prompt(`Enter new MAC for ${name}:`, oldMac);
+    if(newMac && newMac !== oldMac) {
+      await fetch(`/api/students/${oldMac}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({name, mac: newMac}) });
+      fetchStudents();
+    }
+  }
+
+  async function delStudent(mac) {
+    if(confirm("Delete student from registry?")) { await fetch(`/api/students/${mac}`, { method: 'DELETE' }); fetchStudents(); }
+  }
+
+  async function override(mac) {
+    const status = document.getElementById(`sel-${mac}`).value;
+    await fetch(`/api/students/${mac}/manual`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({status}) });
+    fetchStudents();
+  }
+
+  fetchStudents(); setInterval(fetchStudents, 5000);
+</script>
+</body>
+</html>
