@@ -75,6 +75,18 @@ python main.py
  ┣ 📜 requirements.txt     # Dependency definitions
  ┗ 📜 README.md
 ```
+## ⚖️ License
+
+This project is licensed under the **MIT License**. 
+
+### What this means:
+* **✅ Commercial Use**: You can use this software for commercial purposes.
+* **✅ Modification**: You can modify the code however you like.
+* **✅ Distribution**: You can share and sell the code.
+* **✅ Private Use**: You can use it privately.
+* **⚠️ Attribution**: You must include the original copyright notice and license in any copy of the software or substantial portion of it.
+
+See the [LICENSE](LICENSE) file for the full text.
 
 ## 🔒 Limitations & Notes
 * This system is explicitly designed for local gateway monitoring and relies heavily on OS-level `arp` execution. Modifying this for Unix systems will require updating the regex logic in the network scanner layer.
