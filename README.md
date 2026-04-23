@@ -58,8 +58,8 @@ python main.py
 ```
 
 ### 4. Accessing the Pulse
-* **Dashboard (Live View):** Open your browser and navigate to `http://127.0.0.1:8000`
-* **Admin Settings:** Navigate to `http://127.0.0.1:8000/admin` to begin adding hardware entries to your student registry.
+* **Dashboard (Live View):** Open your browser and navigate to `http://127.0.0.1:5000`
+* **Admin Settings:** Navigate to `http://127.0.0.1:5000/admin` to begin adding hardware entries to your student registry.
 
 ---
 

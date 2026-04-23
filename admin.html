@@ -131,7 +131,7 @@
     WiFi Attendance
   </div>
   <nav class="nav-menu">
-    <a href="/" class="nav-item">
+    <a href="/dashboard" class="nav-item">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
       Dashboard
     </a>
@@ -157,9 +157,48 @@
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
         Gateway: 192.168.137.1
       </div>
-      <a href="/" class="btn btn-outline">
-        &larr; Return to Dashboard
+      <button id="btn-server" class="btn btn-primary" onclick="toggleServer()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" id="server-icon"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>
+        <span id="server-btn-text">Connect Server</span>
+      </button>
+      <a href="/dashboard" class="btn btn-outline">
+        &larr; Go to Dashboard
       </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-icon">⏱</div>
+      <div>
+        <h2>Attendance Timers</h2>
+        <p>Set duration thresholds required to automatically mark full or partial attendance.</p>
+      </div>
+    </div>
+    <div class="grid-form">
+      <div>
+        <label>Partial Attendance</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="cfg-partial-val" min="1" value="20" style="flex:1;">
+          <select id="cfg-partial-unit" style="width:120px;">
+            <option value="seconds">Seconds</option>
+            <option value="hours">Hours</option>
+          </select>
+        </div>
+      </div>
+      <div>
+        <label>Full Attendance</label>
+        <div style="display:flex;gap:8px;">
+          <input type="number" id="cfg-full-val" min="1" value="1" style="flex:1;">
+          <select id="cfg-full-unit" style="width:120px;">
+            <option value="minutes">Minutes</option>
+            <option value="hours">Hours</option>
+          </select>
+        </div>
+      </div>
+      <button class="btn btn-outline" style="padding: 14px 24px;" onclick="saveConfig()">
+        Save Timers
+      </button>
     </div>
   </div>
 
@@ -239,6 +278,58 @@
     const pts = name.split(' ');
     if(pts.length > 1) return pts[0][0] + pts[1][0];
     return pts[0][0];
+  }
+
+  let isServerRunning = false;
+
+  async function fetchConfig() {
+    try {
+      const res = await fetch('/api/config');
+      const data = await res.json();
+      isServerRunning = data.is_server_connected;
+      updateServerBtn();
+      
+      const cfg = data.config;
+      if (cfg) {
+        document.getElementById('cfg-partial-val').value = cfg.partial_value || 20;
+        document.getElementById('cfg-partial-unit').value = cfg.partial_unit || 'seconds';
+        document.getElementById('cfg-full-val').value = cfg.full_value || 1;
+        document.getElementById('cfg-full-unit').value = cfg.full_unit || 'hours';
+      }
+    } catch(e) { console.error('fetch config error', e); }
+  }
+
+  async function saveConfig() {
+    const payload = {
+      partial_value: parseInt(document.getElementById('cfg-partial-val').value),
+      partial_unit: document.getElementById('cfg-partial-unit').value,
+      full_value: parseInt(document.getElementById('cfg-full-val').value),
+      full_unit: document.getElementById('cfg-full-unit').value
+    };
+    await fetch('/api/config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
+    alert("Timers configuration saved!");
+  }
+
+  function updateServerBtn() {
+    const btnText = document.getElementById('server-btn-text');
+    const icon = document.getElementById('server-icon');
+    const btn = document.getElementById('btn-server');
+    if (isServerRunning) {
+      btnText.textContent = 'Disconnect Server';
+      icon.innerHTML = '<rect x="6" y="6" width="12" height="12"></rect>';
+      btn.style.background = '#c5221f';
+      btn.style.borderColor = '#c5221f';
+    } else {
+      btnText.textContent = 'Connect Server';
+      icon.innerHTML = '<polygon points="5 3 19 12 5 21 5 3"></polygon>';
+      btn.style.background = ''; // reset to primary
+    }
+  }
+
+  async function toggleServer() {
+    isServerRunning = !isServerRunning;
+    updateServerBtn();
+    await fetch('/api/server/state', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({state: isServerRunning}) });
   }
 
   async function fetchStudents() {
@@ -351,7 +442,7 @@
     fetchStudents();
   }
 
-  fetchStudents(); setInterval(fetchStudents, 5000);
+  fetchConfig(); fetchStudents(); setInterval(fetchStudents, 5000);
 </script>
 </body>
 </html>

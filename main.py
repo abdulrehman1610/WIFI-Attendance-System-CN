@@ -60,6 +60,17 @@ def init_db():
             c.execute("ALTER TABLE archived_sessions ADD COLUMN connected_seconds REAL DEFAULT 0.0")
         except sqlite3.OperationalError:
             pass
+            
+        c.execute("""
+            CREATE TABLE IF NOT EXISTS config (
+                key TEXT PRIMARY KEY,
+                value TEXT
+            )
+        """)
+        c.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('partial_value', '20')")
+        c.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('partial_unit', 'seconds')")
+        c.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('full_value', '1')")
+        c.execute("INSERT OR IGNORE INTO config (key, value) VALUES ('full_unit', 'hours')")
         conn.commit()
 
 # Run init
@@ -118,6 +129,7 @@ def read_arp_table():
 
 latest_data = {}
 data_lock = threading.Lock()
+is_server_connected = False
 
 def update_sessions(detected_macs):
     today = datetime.date.today().isoformat()
@@ -159,12 +171,25 @@ def calculate_status(session_row):
     
     status = "absent"
     
-    # If connected straight for at least 20 seconds
-    if connected_seconds >= 20: 
+    # Read thresholds from config DB
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("SELECT key, value FROM config")
+        rows = c.fetchall()
+        config_map = {k: v for k, v in rows}
+    
+    partial_val = float(config_map.get('partial_value', 20))
+    partial_unit = config_map.get('partial_unit', 'seconds')
+    full_val = float(config_map.get('full_value', 1))
+    full_unit = config_map.get('full_unit', 'hours')
+
+    partial_seconds_thresh = partial_val if partial_unit == 'seconds' else partial_val * 3600
+    full_seconds_thresh = full_val * 60 if full_unit == 'minutes' else full_val * 3600
+
+    if connected_seconds >= partial_seconds_thresh: 
         status = "partial"
     
-    # If duration connected is near full lecture length, mark as present.
-    if duration_minutes >= LECTURE_MINUTES * 0.8:
+    if connected_seconds >= full_seconds_thresh:
         status = "present"
         
     return status, round(duration_minutes)
@@ -233,6 +258,9 @@ def background_scanner():
     my_ip = get_hotspot_ip()
     print(f"  Scanner started — hotspot IP: {my_ip}")
     while True:
+        if not is_server_connected:
+            time.sleep(1)
+            continue
         try:
             ping_sweep()
             devices = read_arp_table()
@@ -344,10 +372,54 @@ def set_manual_status(mac: str, s: ManualStatus):
         conn.commit()
         return {"status": "success"}
 
+class ConfigUpdate(BaseModel):
+    partial_value: int
+    partial_unit: str
+    full_value: int
+    full_unit: str
+
+@app.get("/api/config")
+def get_config():
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("SELECT key, value FROM config")
+        config_map = {k: v for k, v in c.fetchall()}
+    return {
+        "is_server_connected": is_server_connected,
+        "config": config_map
+    }
+
+@app.post("/api/config")
+def update_config(config: ConfigUpdate):
+    with sqlite3.connect(DB_FILE) as conn:
+        c = conn.cursor()
+        c.execute("UPDATE config SET value = ? WHERE key = 'partial_value'", (str(config.partial_value),))
+        c.execute("UPDATE config SET value = ? WHERE key = 'partial_unit'", (config.partial_unit,))
+        c.execute("UPDATE config SET value = ? WHERE key = 'full_value'", (str(config.full_value),))
+        c.execute("UPDATE config SET value = ? WHERE key = 'full_unit'", (config.full_unit,))
+        conn.commit()
+    return {"status": "success"}
+
+class ServerStateRequest(BaseModel):
+    state: bool
+
+@app.post("/api/server/state")
+def set_server_state(req: ServerStateRequest):
+    global is_server_connected
+    is_server_connected = req.state
+    # Clear tracking state if it turns on/off? Just let it be paused.
+    return {"status": "success", "is_server_connected": is_server_connected}
+
 # ─── Static files routing ──────────────────────────────────────────────────────
+
+from fastapi.responses import RedirectResponse
 
 @app.get("/")
 def index():
+    return RedirectResponse(url='/admin')
+
+@app.get("/dashboard")
+def dashboard():
     return FileResponse("dashboard.html")
 
 @app.get("/admin")
