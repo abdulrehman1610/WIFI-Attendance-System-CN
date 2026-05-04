@@ -183,7 +183,12 @@ def calculate_status(session_row):
     full_val = float(config_map.get('full_value', 1))
     full_unit = config_map.get('full_unit', 'hours')
 
-    partial_seconds_thresh = partial_val if partial_unit == 'seconds' else partial_val * 3600
+    if partial_unit == 'seconds':
+        partial_seconds_thresh = partial_val
+    elif partial_unit == 'minutes':
+        partial_seconds_thresh = partial_val * 60
+    else:
+        partial_seconds_thresh = partial_val * 3600
     full_seconds_thresh = full_val * 60 if full_unit == 'minutes' else full_val * 3600
 
     if connected_seconds >= partial_seconds_thresh: 
