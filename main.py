@@ -91,6 +91,13 @@ def get_hotspot_ip():
         pass
     return HOTSPOT_IP
 
+# ─── PING SWEEP ─────────────────────────────────────────────────────
+"""
+Mobile devices often go to "sleep" on the network to save battery. 
+Pinging them forces them to wake up and announce their 
+presence to the router.
+"""
+
 def ping_sweep():
     # To avoid hanging the event loop, we don't wait for all subprocesses here if not necessary,
     # but since this runs in a background thread, it's fine.
@@ -101,11 +108,24 @@ def ping_sweep():
             ["ping", "-n", "1", "-w", "200", ip],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
-        procs.append(p)
-    for p in procs:
+        procs.append((ip, p))
+    active_ips = set()
+    for ip, p in procs:
         p.wait()
+        if p.returncode == 0:
+            active_ips.add(ip)
+    return active_ips
 
-def read_arp_table():
+
+# ─── READ ARP TABLE ─────────────────────────────────────────────────────
+"""
+lists every device the computer knows about on the network. 
+It parses the text output using Regex to extract the IP address 
+and the MAC address of every connected phone/laptop. 
+It also tries to look up the device's hostname (like "Johns-iPhone")
+"""
+
+def read_arp_table(active_ips):
     devices, seen = [], set()
     try:
         out = subprocess.check_output("arp -a", text=True, shell=True)
@@ -115,6 +135,11 @@ def read_arp_table():
                 ip, mac = m.group(1), m.group(2).upper()
                 if ip.endswith(".255") or ip in seen:
                     continue
+                
+                # STRICT FILTERING: Only include devices that actively replied to the ping
+                if ip not in active_ips:
+                    continue
+                    
                 seen.add(ip)
                 try:
                     hostname = socket.gethostbyaddr(ip)[0]
@@ -131,6 +156,21 @@ latest_data = {}
 data_lock = threading.Lock()
 is_server_connected = False
 
+
+"""
+This takes the list of MAC addresses 
+just found by the scanner.
+
+It queries the DB for registered students.
+
+If a detected MAC belongs to a student, 
+it checks if they have a session today.
+
+If yes, it calculates how many seconds have passed 
+since they were last seen and adds it to connected_seconds.
+
+If no, it creates a brand new session for them starting right now.
+"""
 def update_sessions(detected_macs):
     today = datetime.date.today().isoformat()
     now = datetime.datetime.now()
@@ -150,14 +190,20 @@ def update_sessions(detected_macs):
             if row:
                 last_seen_dt = datetime.datetime.fromisoformat(row[1])
                 diff_sec = (now - last_seen_dt).total_seconds()
-                added_sec = diff_sec if diff_sec <= SCAN_INTERVAL * 2 else SCAN_INTERVAL
+                # Increase tolerance to 30s to account for ping sweep delays, so students get credited exact real-time
+                added_sec = diff_sec if diff_sec <= SCAN_INTERVAL * 6 else SCAN_INTERVAL
                 c.execute("UPDATE sessions SET last_seen = ?, connected_seconds = connected_seconds + ? WHERE id = ?", (now.isoformat(), added_sec, row[0]))
             else:
                 c.execute("INSERT INTO sessions (mac, date, first_seen, last_seen, connected_seconds) VALUES (?, ?, ?, ?, ?)", 
                           (mac, today, now.isoformat(), now.isoformat(), SCAN_INTERVAL))
         conn.commit()
 
-def calculate_status(session_row):
+# ─── CALCULATE STATUS ─────────────────────────────────────────────────────
+"""
+Decides if a student is "Present", "Partial", or "Absent".
+"""
+
+def calculate_status(session_row, is_connected=False):
     # session_row: (first_seen, last_seen, manual_status, connected_seconds)
     if not session_row:
         return "absent", 0
@@ -191,13 +237,20 @@ def calculate_status(session_row):
         partial_seconds_thresh = partial_val * 3600
     full_seconds_thresh = full_val * 60 if full_unit == 'minutes' else full_val * 3600
 
-    if connected_seconds >= partial_seconds_thresh: 
-        status = "partial"
-    
     if connected_seconds >= full_seconds_thresh:
         status = "present"
+    elif connected_seconds >= partial_seconds_thresh: 
+        if is_connected:
+            status = "partial"
+        else:
+            status = "absent"
         
     return status, round(duration_minutes)
+
+# ─── BUILD ATTENDANCE ─────────────────────────────────────────────────────
+"""
+Assembles the final attendance report for the day.
+"""
 
 def build_attendance(devices, my_ip):
     connected = [d for d in devices if d["ip"] != my_ip]
@@ -222,7 +275,8 @@ def build_attendance(devices, my_ip):
             c.execute("SELECT first_seen, last_seen, manual_status, connected_seconds FROM sessions WHERE mac = ? AND date = ?", (mac, today))
             session_row = c.fetchone()
             
-            status, duration = calculate_status(session_row)
+            is_connected = mac in connected_macs
+            status, duration = calculate_status(session_row, is_connected)
             
             if status == "present":
                 present_count += 1
@@ -267,8 +321,10 @@ def background_scanner():
             time.sleep(1)
             continue
         try:
-            ping_sweep()
-            devices = read_arp_table()
+            # Clear ARP cache if running as Admin (swallows error if not Admin)
+            subprocess.run(["arp", "-d", "*"], capture_output=True)
+            active_ips = ping_sweep()
+            devices = read_arp_table(active_ips)
             data = build_attendance(devices, my_ip)
             with data_lock:
                 global latest_data
